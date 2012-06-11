@@ -286,8 +286,8 @@ class fImg {
 	 */
 	private static function createDir() {
 		self::$upload_dir = wp_upload_dir();
-		self::$upload_dir['basedir'] .= '/freshimg';
-		self::$upload_dir['baseurl'] .='/freshimg';
+		self::$upload_dir['basedir'] .= '/freshizer';
+		self::$upload_dir['baseurl'] .='/freshizer';
 		// if this directory does not exists, create it;
 		if( !is_dir(self::$upload_dir['basedir']))
 			mkdir( self::$upload_dir['basedir']);
