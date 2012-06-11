@@ -7,7 +7,7 @@
  * 100% working :)
  * 
  * @author freshface
- * @version 1.01
+ * @version 1.02
  * @link http://www.freshface.net
  * @link http://github.com/boobslover/freshizer
  * @license GNU version 2
@@ -20,7 +20,7 @@ class fImg {
 
 /**********************************************************************************************************************************************/	
 /**********************************************************************************************************************************************/		
-	protected static $caching_interval = 86400;			// [seconds] 86400 sec = 24hr
+	protected static $caching_interval = 86400;				// [seconds] 86400 sec = 24hr
 	protected static $enable_caching = true;				// allow caching
 /**********************************************************************************************************************************************/
 /**********************************************************************************************************************************************/	
@@ -74,10 +74,12 @@ class fImg {
 		if( !file_exists( $new_image_path ) ) {
 			self::image_resize($rel_path, $new_img_size['width'], $new_img_size['height'], true, $hash ); //image_resize($relative_path, 200, 200, true, $new_file_path);
 		}
-		return $new_img_path;
+		
+		$new_img_name = self::getNewImageName($url, $hash, $new_img_size['width'], $new_img_size['height']);
+		return self::$upload_dir['baseurl'].'/'.$new_img_name;
 	}
 
-/**
+	/**
 	 * Scale down an image to fit a particular size and save a new copy of the image.
 	 *
 	 * The PNG transparency will be preserved using the function, as well as the
@@ -139,7 +141,7 @@ class fImg {
 		$name = wp_basename($file, ".$ext");
 		
 		$destfilename = self::$upload_dir['basedir']."/{$prefix}{$name}-{$suffix}.{$ext}";
-
+		$filename = "/{$prefix}{$name}-{$suffix}.{$ext}";
 		if ( IMAGETYPE_GIF == $orig_type ) {
 			if ( !imagegif( $newimage, $destfilename ) )
 				return new WP_Error('resize_path_invalid', __( 'Resize path invalid' ));
@@ -150,6 +152,7 @@ class fImg {
 			// all other formats are converted to jpg
 			//$destfilename = "{$dir}/{$name}-{$suffix}.jpg";
 			$destfilename =  self::$upload_dir['basedir']."/{$prefix}{$name}-{$suffix}.jpg";
+			$filename = "/{$prefix}{$name}-{$suffix}.jpg";
 			if ( !imagejpeg( $newimage, $destfilename, apply_filters( 'jpeg_quality', $jpeg_quality, 'image_resize' ) ) )
 				return new WP_Error('resize_path_invalid', __( 'Resize path invalid' ));
 		}
@@ -161,7 +164,7 @@ class fImg {
 		$perms = $stat['mode'] & 0000666; //same permissions as parent folder, strip off the executable bits
 		@ chmod( $destfilename, $perms );
 	
-		return $destfilename;
+		return $filename;
 	}
 	
 	/**
@@ -185,7 +188,7 @@ class fImg {
 		return $image;
 	}	
 	
-/**
+	/**
 	 * Get new image dimensions. If its not possible to resize the image, return false
 	 * @param array Image Dimension from function GetImageSize
 	 * @param int width
@@ -276,6 +279,19 @@ class fImg {
 		$filepath = self::$upload_dir['basedir']."/{$hash}{$filename}-{$suffix}.{$ext}";
 		return $filepath;
 	}	
+	
+	protected static function getNewImageName( $url, $hash, $width, $height ) {
+		$pinfo = pathinfo( $url );
+		
+		$filename = $pinfo['filename'];
+		$ext = $pinfo['extension'];
+		$hash .= '-';
+
+		$suffix = "{$width}x{$height}";
+		
+		$filepath = "{$hash}{$filename}-{$suffix}.{$ext}";
+		return $filepath;
+	}
 	
 // #############################################################################################################################################
 // ## CACHE & DIRECTORY MANAGING
