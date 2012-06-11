@@ -238,11 +238,10 @@ class fImg {
 	 * @return string Relative Image Path;
 	 */
 	protected static function getRelativePath( $url ) {
-		$wordpress_url = get_bloginfo('wpurl');
-		$relative_image_path = str_replace( $wordpress_url, '', $url);
-		$relative_image_path = ltrim( $relative_image_path, '/' );
+		$rel_path = str_replace( $_SERVER['HTTP_HOST'], $_SERVER['DOCUMENT_ROOT'], $url);
+		$rel_path = str_replace( 'http://','', $rel_path);
 		
-		return $relative_image_path;
+		return $rel_path;
 	}	
 	/** 
 	 * Get simple hash created from first and last letters from each folder of the image location - for unique identify every image
