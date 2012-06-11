@@ -7,7 +7,7 @@
  * 100% working :)
  * 
  * @author freshface
- * @version 1.02
+ * @version 1.03
  * @link http://www.freshface.net
  * @link http://github.com/boobslover/freshizer
  * @license GNU version 2
@@ -258,7 +258,7 @@ class fImg {
 	}
 	
 	/**
-	 * Get new image name ( with hash, prefix and other ) to check if the image already exists.
+	 * Get new image absolute path ( with hash, prefix and other ) to check if the image already exists.
 	 * 
 	 * @param string $url Url pointing to the image
 	 * @param string $hash Hash from custom hashing function
@@ -268,18 +268,21 @@ class fImg {
 	 * @return string
 	 */
 	public static function getNewImagePath ( $url, $hash, $width, $height ) {
-		$pinfo = pathinfo( $url );
-		
-		$filename = $pinfo['filename'];
-		$ext = $pinfo['extension'];
-		$hash .= '-';
-
-		$suffix = "{$width}x{$height}";
-		
-		$filepath = self::$upload_dir['basedir']."/{$hash}{$filename}-{$suffix}.{$ext}";
+		$filename = self::getNewImageName($url, $hash, $width, $height);
+		$filepath = self::$upload_dir['basedir']."/{$filename}";
 		return $filepath;
 	}	
 	
+	/**
+	 * Get new image name ( with hash, prefix and other ) to check if the image already exists.
+	 * 
+	 * @param string $url Url pointing to the image
+	 * @param string $hash Hash from custom hashing function
+	 * @param int $width Width of the image
+	 * @param int $height Height of the image
+	 * 
+	 * @return string
+	 */	
 	protected static function getNewImageName( $url, $hash, $width, $height ) {
 		$pinfo = pathinfo( $url );
 		
