@@ -7,7 +7,7 @@
  * 100% working :)
  * 
  * @author freshface
- * @version 1.0
+ * @version 1.01
  * @link http://www.freshface.net
  * @link http://github.com/boobslover/freshizer
  * @license GNU version 2
@@ -346,3 +346,11 @@ class fImg {
 	}
 }
 fImg::init();
+// #############################################################################################################################################
+// ## WRAPPERS
+// #############################################################################################################################################
+function fs_resize( $url, $width, $height = false, $fixed = false ) {
+	fImg::resize($url, $width, $height, $fixed);
+}
+
+
