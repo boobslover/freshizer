@@ -45,10 +45,10 @@ class fImg {
 // #############################################################################################################################################
 // ## RESIZING
 // #############################################################################################################################################	
-	public static function resize( $url, $width, $height = false) {
+	public static function resize( $url, $width, $height = false, $fixed = false) {
 		// should we resize img height ?
-		$fixed = false;
-		if( $height ) $fixed = true;
+		//$fixed = false;
+		//if( $height ) $fixed = true;
 		
 		$rel_path = self::getRelativePath($url);
 		$img_size = self::getImageSize( $rel_path );
