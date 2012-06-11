@@ -20,8 +20,8 @@ class fImg {
 
 /**********************************************************************************************************************************************/	
 /**********************************************************************************************************************************************/		
-	private static $caching_interval = 86400;			// [seconds] 86400 sec = 24hr
-	private static $enable_caching = true;				// allow caching
+	protected static $caching_interval = 86400;			// [seconds] 86400 sec = 24hr
+	protected static $enable_caching = true;				// allow caching
 /**********************************************************************************************************************************************/
 /**********************************************************************************************************************************************/	
 
@@ -29,7 +29,7 @@ class fImg {
 // #############################################################################################################################################
 // ## VARIABLES AND CONSTANTS
 // #############################################################################################################################################		
-	private static $upload_dir = null;			// upload directory, here we store all resized images
+	protected static $upload_dir = null;			// upload directory, here we store all resized images
 // #############################################################################################################################################
 // ## INITIALIZATION
 // #############################################################################################################################################		
@@ -97,7 +97,7 @@ class fImg {
 	 * @param string $prefix Optional. File prefix, usually hash.
 	 * @return mixed WP_Error on failure. String with new destination path.
 	 */
-	private static function image_resize( $file, $max_w, $max_h, $crop = false, $prefix = false) { //$suffix = null, $dest_path = null, $jpeg_quality = 90 ) {
+	protected static function image_resize( $file, $max_w, $max_h, $crop = false, $prefix = false) { //$suffix = null, $dest_path = null, $jpeg_quality = 90 ) {
 		$jpeg_quality = 90;
 		
 		if( $prefix ) {
@@ -170,7 +170,7 @@ class fImg {
 	 * @param string Relative path to the image
 	 * @return bool / string When fail false, other image dimensions
 	 */
-	private static function getImageSize( $relative_image_path ) {
+	protected static function getImageSize( $relative_image_path ) {
 		// does the file exists ? If no, return false
 		if( !file_exists($relative_image_path) ) {
 			return false;
@@ -194,7 +194,7 @@ class fImg {
 	 * 
 	 * @return array
 	 */
-	private static function getNewDimensions( $image_dim, $width, $height, $fixed_height ) {
+	protected static function getNewDimensions( $image_dim, $width, $height, $fixed_height ) {
 		// fixed height mean that we want to have exactly same dimensions
 		if( $fixed_height ) {
 			$wanted_width = $width;
@@ -237,7 +237,7 @@ class fImg {
 	 * @param string Url = image url
 	 * @return string Relative Image Path;
 	 */
-	private static function getRelativePath( $url ) {
+	protected static function getRelativePath( $url ) {
 		$wordpress_url = get_bloginfo('wpurl');
 		$relative_image_path = str_replace( $wordpress_url, '', $url);
 		$relative_image_path = ltrim( $relative_image_path, '/' );
@@ -249,7 +249,7 @@ class fImg {
 	 * 
 	 * @return int Hash
 	 */
-	private static function getImgHash( $path, $img_size ) {
+	protected static function getImgHash( $path, $img_size ) {
 		$file_size = filesize( $path );
 		$hash = $file_size + $img_size['width'] + $img_size['height'];
 		return $hash;
@@ -284,7 +284,7 @@ class fImg {
 	/**
 	 * Check if upload directory exists, if not, create it. Then load the directories into local variables
 	 */
-	private static function createDir() {
+	protected static function createDir() {
 		self::$upload_dir = wp_upload_dir();
 		self::$upload_dir['basedir'] .= '/freshizer';
 		self::$upload_dir['baseurl'] .='/freshizer';
@@ -296,7 +296,7 @@ class fImg {
 	/**
 	 * List all the images in the cache folder, and delete the expired images.
 	 */
-	private static function clearCache() {
+	protected static function clearCache() {
 		if( self::$enable_caching == false ) return;
 		// default timeout is one day :)
 		$timeout = self::$caching_interval;
@@ -318,7 +318,7 @@ class fImg {
 	/**
 	 * Go through the whole img store folder and read all files.
 	 */
-	private static function readCacheFolder() {
+	protected static function readCacheFolder() {
 		$list_of_elements = array();				// we will be returning this
 		$path = self::$upload_dir['basedir'] . '/';
 		// go through all elements in the folder and store them in the array
