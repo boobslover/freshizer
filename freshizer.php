@@ -73,7 +73,7 @@ class fImg {
 		$img_old_relative_path = self::getRelativePath( $url );			// here we get relative path to better resizing 
 		$img_old_size = self::getImageSize( $img_old_relative_path );	// get image size returned in array
 		
-		$crop = true;
+		//$crop = true;
 		$dim = self::calculateNewDimensions($img_old_size['width'], $img_old_size['height'], $width, $height, $crop);
 		
 		$img_new_hash = self::getImgHash( $img_old_relative_path, $img_old_size);
@@ -111,11 +111,12 @@ class fImg {
 	 * Taken Over from Wordpress Core. This function calculates the best dimension, if we want to crop or not.
 	 */
 	protected static function calculateNewDimensions($orig_w, $orig_h, $dest_w, $dest_h, $crop = false) {
+		
 	    if ( $crop ) {
 	        // crop the largest possible portion of the original image that we can size to $dest_w x $dest_h
 	        $aspect_ratio = $orig_w / $orig_h;
-	        $new_w = min($dest_w, $orig_w);
-	        $new_h = min($dest_h, $orig_h);
+	        $new_w =$dest_w;// min($dest_w, $orig_w);
+	        $new_h =$dest_h;// min($dest_h, $orig_h);
 	
 	        if ( !$new_w ) {
 	            $new_w = intval($new_h * $aspect_ratio);
@@ -145,8 +146,8 @@ class fImg {
 	    }
 	
 	    // if the resulting image would be the same size or larger we don't want to resize it
-	    if ( $new_w >= $orig_w && $new_h >= $orig_h )
-	        return false;
+	   // if ( $new_w >= $orig_w && $new_h >= $orig_h )
+	    //    return false;
 	
 	    // the return array matches the parameters to imagecopyresampled()
 	    // int dst_x, int dst_y, int src_x, int src_y, int dst_w, int dst_h, int src_w, int src_h
@@ -168,18 +169,21 @@ class fImg {
 
 
 	protected static function constrainNewDimensions( $current_width, $current_height, $max_width=0, $max_height=0 ) {
+		
 	    if ( !$max_width and !$max_height )
 	        return array( $current_width, $current_height );
 	
 	    $width_ratio = $height_ratio = 1.0;
 	    $did_width = $did_height = false;
 	
-	    if ( $max_width > 0 && $current_width > 0 && $current_width > $max_width ) {
+	    if ( $max_width > 0 && $current_width > 0 ) 
+	    {
 	        $width_ratio = $max_width / $current_width;
 	        $did_width = true;
 	    }
 	
-	    if ( $max_height > 0 && $current_height > 0 && $current_height > $max_height ) {
+	    if ( $max_height > 0 && $current_height > 0 ) 
+	    {
 	        $height_ratio = $max_height / $current_height;
 	        $did_height = true;
 	    }
