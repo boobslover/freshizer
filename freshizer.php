@@ -55,16 +55,27 @@ class fImg {
 	 * Initialization of all functions for proper work of this class
 	 */
 	public static function init() {
+		
+		
 		self::customUserSettings();
-			if( self::$upload_dir == null && function_exists('wp_upload_dir') ) {
+		if( self::$upload_dir == null && function_exists('wp_upload_dir') ) {
 			self::$upload_dir = wp_upload_dir();
 			self::$upload_dir['basedir'] .= '/freshizer';
 			self::$upload_dir['baseurl'] .='/freshizer';		
-		}
+		} else if ( self::$upload_dir == null && !function_exists('wp_upload_dir') ) {
+			self::getUploadDir();
+		}	
 		// created the wanted directory
 		self::createDir();
 		//self::clearCache();
 	} 	
+	private static function getUploadDir() {
+		$script_dir = realpath(dirname(__FILE__));
+		$script_url = 'http://'.$_SERVER['SERVER_NAME'] . str_replace(realpath($_SERVER['DOCUMENT_ROOT']), '', $script_dir);
+		self::$upload_dir['basedir'] = $script_dir.'/freshizer';
+		self::$upload_dir['baseurl'] = $script_url.'/freshizer';
+	}
+	
 // #############################################################################################################################################
 // ## RESIZING
 // #############################################################################################################################################	
@@ -305,6 +316,8 @@ class fImg {
 	 * @return string Relative Image Path;
 	 */
 	protected static function getRelativePath( $url ) {
+		
+		if( strpos($url, $_SERVER['HTTP_HOST']) === false  ) return $url;
 		$rel_path = str_replace( $_SERVER['HTTP_HOST'], $_SERVER['DOCUMENT_ROOT'], $url);
 		$rel_path = str_replace( 'http://','', $rel_path);
 		
