@@ -3,11 +3,10 @@
  * FRESHIZER 
  * =========
  * 
- * Image Resizing Class directly for wordpress. This class is using built-in wordpress functions to resize images and store them into the cache.
- * 100% working :)
+ * Image resizing class, 100% working in all cases at all servers
  * 
  * @author freshface
- * @version 1.1
+ * @version 1.2
  * @link http://www.freshface.net
  * @link http://github.com/boobslover/freshizer
  * @license GNU version 2
@@ -47,7 +46,7 @@ class fImg {
 	protected static $caching_interval = 86400;				// [seconds] 86400 sec = 24hr
 	protected static $enable_caching = true;				// allow caching	
 		
-	protected static $upload_dir = null;			// upload directory, here we store all resized images
+	protected static $upload_dir = null;					// upload directory, here we store all resized images
 // #############################################################################################################################################
 // ## INITIALIZATION
 // #############################################################################################################################################		
@@ -55,59 +54,81 @@ class fImg {
 	 * Initialization of all functions for proper work of this class
 	 */
 	public static function init() {
-		
-		
-		self::customUserSettings();
+		self::customUserSettings();							// load custom user settings
+		self::getUploadDir();								// load upload directory ( WP or script url )
+		self::createDir();									// create that directory
+	} 	
+	
+	/**
+	 * Get upload dir, if has been not defined. If we are in wordpress, then use the wp-content directory. If not, use script path and url
+	 */
+	private static function getUploadDir() {
 		if( self::$upload_dir == null && function_exists('wp_upload_dir') ) {
 			self::$upload_dir = wp_upload_dir();
 			self::$upload_dir['basedir'] .= '/freshizer';
 			self::$upload_dir['baseurl'] .='/freshizer';		
 		} else if ( self::$upload_dir == null && !function_exists('wp_upload_dir') ) {
-			self::getUploadDir();
+			$script_dir = realpath(dirname(__FILE__));
+			$script_url = 'http://'.$_SERVER['SERVER_NAME'] . str_replace(realpath($_SERVER['DOCUMENT_ROOT']), '', $script_dir);
+			self::$upload_dir['basedir'] = $script_dir.'/freshizer';
+			self::$upload_dir['baseurl'] = $script_url.'/freshizer';
 		}	
-		// created the wanted directory
-		self::createDir();
-		//self::clearCache();
-	} 	
-	private static function getUploadDir() {
-		$script_dir = realpath(dirname(__FILE__));
-		$script_url = 'http://'.$_SERVER['SERVER_NAME'] . str_replace(realpath($_SERVER['DOCUMENT_ROOT']), '', $script_dir);
-		self::$upload_dir['basedir'] = $script_dir.'/freshizer';
-		self::$upload_dir['baseurl'] = $script_url.'/freshizer';
 	}
 	
 // #############################################################################################################################################
 // ## RESIZING
-// #############################################################################################################################################	
+// #############################################################################################################################################
+	/**
+	 * Resize image and save it to the upload directory
+	 * @param string url Link to the source image
+	 * @param int width Wanted width
+	 * @param int height Wanted height
+	 * @param int crop Do we want crop ( fixed height )
+	 * 
+	 * @return string Resized Image url
+	 */
 	public static function resize( $url, $width, $height = false, $crop = false) {
-
 		$img_old_relative_path = self::getRelativePath( $url );			// here we get relative path to better resizing 
 		$img_old_size = self::getImageSize( $img_old_relative_path );	// get image size returned in array
-		$dim = self::calculateNewDimensions($img_old_size['width'], $img_old_size['height'], $width, $height, $crop);
 		
-		$img_new_hash = self::getImgHash( $img_old_relative_path, $img_old_size);
-		$img_new_path = self::getNewImagePath($img_old_relative_path, $img_new_hash, $dim['dst']['w'], $dim['dst']['h']);
-		$img_new_url =  self::getNewImageUrl($img_old_relative_path, $img_new_hash, $dim['dst']['w'], $dim['dst']['h']);
-		
-		if( file_exists( $img_new_path ) ) {
-			return $img_new_url;
-		} else {
-			self::resizeImage($img_old_relative_path, $img_new_path, $dim);
+		if( $img_old_size == false ) {
+			echo 'Image does not exists';
+			return false;
 		}
 		
+		$dim = self::calculateNewDimensions($img_old_size['width'], $img_old_size['height'], $width, $height, $crop);		// calculate new dimensions
+		$img_new_hash = self::getImgHash( $img_old_relative_path, $img_old_size);											// get image hash for unique identification
+ 		$img_new_path = self::getNewImagePath($img_old_relative_path, $img_new_hash, $dim['dst']['w'], $dim['dst']['h']);	// create new img path ( in upload dir)
+		$img_new_url =  self::getNewImageUrl($img_old_relative_path, $img_new_hash, $dim['dst']['w'], $dim['dst']['h']);	// create new img url
+		
+		// if the image does not exists ( == it's not cached ) then create it
+		if( !file_exists( $img_new_path ) ) {
+			self::resizeImage($img_old_relative_path, $img_new_path, $dim);
+		}
 		return $img_new_url;
 	}
 	
+	/** 
+	 * Image resizing, the core. This function load the original image, resize it and save as a new iamge
+	 * @param string $img_old_path Path to the old image
+	 * @param string $img_new_path Path to the new image
+	 * @param array  $dimensions   Dimensions of the old and new images
+	 */
 	protected static function resizeImage( $img_old_path, $img_new_path, $dimensions ) {
-		$img_old = self::loadImage( $img_old_path );
-
+		// load image and in case of failure echo error and return
+		$img_old = self::loadImage( $img_old_path );			
 		if( !is_resource($img_old) ) {
 			echo 'Error loading image';
-			return;
+			return false;
 		}
-		$img_new = imagecreatetruecolor( $dimensions['dst']['w'], $dimensions['dst']['h']);
+		
+		$img_new = self::createImage( $dimensions['dst']['w'], $dimensions['dst']['h']);	// create new true color image
+		
+		// copy original image to new one
 		imagecopyresampled($img_new, $img_old, $dimensions['dst']['x'], $dimensions['dst']['y'], $dimensions['src']['x'], $dimensions['src']['y'], $dimensions['dst']['w'], $dimensions['dst']['h'], $dimensions['src']['w'], $dimensions['src']['h']);
+		// save the image
 		self::saveImage($img_new, $img_new_path);
+		// destroi the images
 		imagedestroy($img_new);
 		imagedestroy($img_old);
 		
@@ -121,6 +142,7 @@ class fImg {
 	protected static function calculateNewDimensions($orig_w, $orig_h, $dest_w, $dest_h, $crop = false) {
 		
 	    if ( $crop ) {
+	    	
 	        // crop the largest possible portion of the original image that we can size to $dest_w x $dest_h
 	        $aspect_ratio = $orig_w / $orig_h;
 	        $new_w =$dest_w;// min($dest_w, $orig_w);
@@ -152,13 +174,6 @@ class fImg {
 		
 	        list( $new_w, $new_h ) = self::constrainNewDimensions( $orig_w, $orig_h, $dest_w, $dest_h );
 	    }
-	
-	    // if the resulting image would be the same size or larger we don't want to resize it
-	   // if ( $new_w >= $orig_w && $new_h >= $orig_h )
-	    //    return false;
-	
-	    // the return array matches the parameters to imagecopyresampled()
-	    // int dst_x, int dst_y, int src_x, int src_y, int dst_w, int dst_h, int src_w, int src_h
 	    $to_return = array();
 		$to_return['src']['x'] = (int)$s_x;
 		$to_return['src']['y'] = (int)$s_y;
@@ -171,11 +186,11 @@ class fImg {
 		$to_return['dst']['h'] = (int)$new_h;		
 	    
 		return $to_return;
-	    //return array( 0, 0, (int) $s_x, (int) $s_y, (int) $new_w, (int) $new_h, (int) $crop_w, (int) $crop_h );
-		
 	}
 
-
+	/**
+	 * This function has been take over from wordpress core. It calculate the best proportion to uncropped image
+	 */
 	protected static function constrainNewDimensions( $current_width, $current_height, $max_width=0, $max_height=0 ) {
 		
 	    if ( !$max_width and !$max_height )
@@ -245,35 +260,42 @@ class fImg {
 // ## IMAGE LOADING AND SAVING
 // #############################################################################################################################################		
 	/**
-	 * Decide which image type it is and load it
+	 * Decide which image type it is and load it -> TAKEN OVER FROM WORDPRESS
 	 * 
 	 * @param string path Path to the image
 	 * @return resource Image Resource ID
 	 */
-	protected static function loadImage( $path ) {
-		$pinfo = pathinfo( $path );
-		$ext = $pinfo['extension'];
-		$img = null;
+	protected static function loadImage( $file ) {
+		   if ( is_numeric( $file ) )
+		        $file = get_attached_file( $file );
 		
-		switch( $ext ) {
-			case 'jpg':
-				$img = imagecreatefromjpeg( $path );
-				
-				break;
-			case 'jpeg':
-				$img = imagecreatefromjpeg( $path );
-				break;	
-			case 'png':
-				$img = imagecreatefrompng( $path );
-				break;
-			
-			case 'gif':
-				$img = imagecreatefromgif( $path );
-				break;
-		}
+		    if ( ! file_exists( $file ) )
+		        return false;
 		
-		return $img;
+		    if ( ! function_exists('imagecreatefromstring') )
+		        return false;
+		
+		    // Set artificially high because GD uses uncompressed images in memory
+		    @ini_set( 'memory_limit', '256M' );
+		    $image = imagecreatefromstring( file_get_contents( $file ) );
+		
+		    if ( !is_resource( $image ) )
+		        return false;
+		
+		    return $image;		
 	}	
+	/**
+	 * Create image truecolor -> TAKEN OVER FROM WORDPRESS
+	 */
+	protected static function createImage ($width, $height) {
+		$img = imagecreatetruecolor($width, $height);
+    	if ( is_resource($img) && function_exists('imagealphablending') && function_exists('imagesavealpha') ) {
+        	imagealphablending($img, false);
+        	imagesavealpha($img, true);
+    	}
+    	return $img;
+	}
+	
 	/**
 	 * Decide which image type it is and save it
 	 * 
@@ -313,21 +335,23 @@ class fImg {
 	 * @return string Relative Image Path;
 	 */
 	protected static function getRelativePath( $url ) {
-		// WP MU settings
+		// WP MU settings - decide if its multisite or not
 		global $blog_id;
-		if (isset($blog_id) && $blog_id > 0) {
-			// get url of wordpress		
+		if (isset($blog_id) && $blog_id > 0 && defined('WP_ALLOW_MULTISITE')) {
+			
+			// get the original wordpress url
 			$url_parts = explode('/', get_bloginfo('wpurl'));
 			$start_url = '';
 			for( $i = 0; $i< count($url_parts)-1; $i++ ) {
 				$start_url.= $url_parts[$i] . '/';
 			}		
-		
+			// if we are resizing theme parts, we need one type of url
 			if( strpos($url, '/themes/') !== false ) {
 				$url_cleaned = str_replace( get_bloginfo('wpurl').'/', $start_url, $url);
 				$url = $url_cleaned;
 
 			}
+			// if we are resizing images in upload dir, we need another type of url
 			else {
 				$imageParts = explode('/files/', $url);
 				if (isset($imageParts[1])) {
@@ -337,8 +361,10 @@ class fImg {
 				$url = $start_url.$theImageSrc;
 			}
 		}
-		 
+		// if its relative path, then return it 
 		if( strpos($url, $_SERVER['HTTP_HOST']) === false  ) return $url;
+		
+		// then return real path
 		$rel_path = str_replace( $_SERVER['HTTP_HOST'], $_SERVER['DOCUMENT_ROOT'], $url);
 		$rel_path = str_replace( 'http://','', $rel_path);
 	
@@ -366,7 +392,7 @@ class fImg {
 	 * 
 	 * @return string
 	 */
-	public static function getNewImagePath ( $url, $hash, $width, $height ) {
+	protected static function getNewImagePath ( $url, $hash, $width, $height ) {
 		$filename = self::getNewImageName($url, $hash, $width, $height);
 		$filepath = self::$upload_dir['basedir']."/{$filename}";
 		return $filepath;
@@ -395,7 +421,7 @@ class fImg {
 		return $filepath;
 	}
 	
-	public static function getNewImageUrl( $path, $hash, $width, $height ) {
+	protected static function getNewImageUrl( $path, $hash, $width, $height ) {
 		$new_img_name = self::getNewImageName( $path, $hash, $width,$height);
 		return( self::$upload_dir['baseurl'] .'/'. $new_img_name );		
 	}	
@@ -415,7 +441,7 @@ class fImg {
 	/**
 	 * List all the images in the cache folder, and delete the expired images.
 	 */
-	public static function clearCache() {
+	public static function deleteCache() {
 		if( self::$enable_caching == false ) return;
 		// default timeout is one day :)
 		$timeout = self::$caching_interval;
