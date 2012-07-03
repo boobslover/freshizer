@@ -80,17 +80,14 @@ class fImg {
 // ## RESIZING
 // #############################################################################################################################################	
 	public static function resize( $url, $width, $height = false, $crop = false) {
-		
+
 		$img_old_relative_path = self::getRelativePath( $url );			// here we get relative path to better resizing 
 		$img_old_size = self::getImageSize( $img_old_relative_path );	// get image size returned in array
-		
-		//$crop = true;
 		$dim = self::calculateNewDimensions($img_old_size['width'], $img_old_size['height'], $width, $height, $crop);
 		
 		$img_new_hash = self::getImgHash( $img_old_relative_path, $img_old_size);
 		$img_new_path = self::getNewImagePath($img_old_relative_path, $img_new_hash, $dim['dst']['w'], $dim['dst']['h']);
 		$img_new_url =  self::getNewImageUrl($img_old_relative_path, $img_new_hash, $dim['dst']['w'], $dim['dst']['h']);
-		
 		
 		if( file_exists( $img_new_path ) ) {
 			return $img_new_url;
@@ -103,7 +100,7 @@ class fImg {
 	
 	protected static function resizeImage( $img_old_path, $img_new_path, $dimensions ) {
 		$img_old = self::loadImage( $img_old_path );
-		
+
 		if( !is_resource($img_old) ) {
 			echo 'Error loading image';
 			return;
@@ -316,12 +313,37 @@ class fImg {
 	 * @return string Relative Image Path;
 	 */
 	protected static function getRelativePath( $url ) {
+		// WP MU settings
+		global $blog_id;
+		if (isset($blog_id) && $blog_id > 0) {
+			// get url of wordpress		
+			$url_parts = explode('/', get_bloginfo('wpurl'));
+			$start_url = '';
+			for( $i = 0; $i< count($url_parts)-1; $i++ ) {
+				$start_url.= $url_parts[$i] . '/';
+			}		
 		
+			if( strpos($url, '/themes/') !== false ) {
+				$url_cleaned = str_replace( get_bloginfo('wpurl').'/', $start_url, $url);
+				$url = $url_cleaned;
+
+			}
+			else {
+				$imageParts = explode('/files/', $url);
+				if (isset($imageParts[1])) {
+					$theImageSrc = 'wp-content/blogs.dir/' . $blog_id . '/files/' . $imageParts[1];
+				}
+				
+				$url = $start_url.$theImageSrc;
+			}
+		}
+		 
 		if( strpos($url, $_SERVER['HTTP_HOST']) === false  ) return $url;
 		$rel_path = str_replace( $_SERVER['HTTP_HOST'], $_SERVER['DOCUMENT_ROOT'], $url);
 		$rel_path = str_replace( 'http://','', $rel_path);
-		
+	
 		return $rel_path;
+		 
 	}	
 	/** 
 	 * Get simple hash created from first and last letters from each folder of the image location - for unique identify every image
