@@ -6,7 +6,7 @@
  * Image resizing class, 100% working in all cases at all servers
  * 
  * @author freshface
- * @version 1.2
+ * @version 1.21
  * @link http://www.freshface.net
  * @link http://github.com/boobslover/freshizer
  * @license GNU version 2
@@ -337,14 +337,8 @@ class fImg {
 	protected static function getRelativePath( $url ) {
 		// WP MU settings - decide if its multisite or not
 		global $blog_id;
-		if (isset($blog_id) && $blog_id > 0 && defined('WP_ALLOW_MULTISITE')) {
-			
-			// get the original wordpress url
-			$url_parts = explode('/', get_bloginfo('wpurl'));
-			$start_url = '';
-			for( $i = 0; $i< count($url_parts)-1; $i++ ) {
-				$start_url.= $url_parts[$i] . '/';
-			}		
+		if (isset($blog_id) && $blog_id > 0 && defined('WP_ALLOW_MULTISITE') && is_multisite() ) {
+			$start_url = network_site_url();
 			// if we are resizing theme parts, we need one type of url
 			if( strpos($url, '/themes/') !== false ) {
 				$url_cleaned = str_replace( get_bloginfo('wpurl').'/', $start_url, $url);
