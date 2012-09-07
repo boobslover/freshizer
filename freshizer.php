@@ -1266,52 +1266,73 @@ class fImgPathPredictor {
 		return $this->_predictor;
 	}
 }
-
-/*
- * private $_imgUrl = null;
+class fImgPathPredictor_Multisite extends fAImgPathPredictor implements fIImgPathPredictor {
+	private $_imgUrl = null;
 	private $_predictedPath = null;
 
-	public function __construct() {
-
-	}
-
-	public function predictPath( $imgUrl ) {
-		$this->_setImgUrl($imgUrl);
+	public function predictPath( $url ) {
+		$this->_setImgUrl( $url );
 		$this->_predictionJunction();
+
 		return $this->_getPredictedPath();
 	}
 
-	private function _predictionJunction() {
-		if( strpos( $this->_getImgUrl(), 'wp-content/uploads') !== false ) {
-			$this->_predictWPUploadsPath();
+	protected function _predictionJunction() {
+		//echo $this->_getImgUrl().'xxxx';
+		//return;
+		$uploadDir = wp_upload_dir();
+
+		if( strpos( $this->_getImgUrl(), $uploadDir['baseurl']) !== false ) {
+			$this->_predictUploads();
 		} else if ( strpos( $this->_getImgUrl(), 'wp-content/themes') !== false ) {
-			$this->_predictWPThemesPath();
+			$this->_predictThemes();
+		} else if ( strpos( $this->_getImgUrl(), 'wp-content/themes') !== false ) {
+			$this->_predictPlugins();
 		}
+
 	}
 
-	private function _predictWPUploadsPath() {
-		$imgUploadDirSplited = explode('wp-content/uploads', $this->_getImgUrl() );
-		$imgAfterUploadDir = $imgUploadDirSplited[1];
-		$wpUploadDir = wp_upload_dir();
-		$baseDir = $wpUploadDir['basedir'];
+	protected function _predictUploads() {
+		$uploadDir = wp_upload_dir();
+		$uploadSubpath = str_replace( $uploadDir['baseurl'],'', $this->_getImgUrl());
 
-		$newRelPath = $baseDir . $imgAfterUploadDir;
+		$newRelPath = $uploadDir['basedir'].$uploadSubpath;
 
 		if( file_exists( $newRelPath) ) {
 			$this->_setPredictedPath( $newRelPath );
 		}
+
+
+	}
+	protected function _predictThemes() {
+		$splitedUrl = explode('themes/', $this->_getImgUrl() ); //explode() $this->_getImgUrl();
+		$splitedPath = explode('themes/', TEMPLATEPATH);
+		$newRelPath = $splitedPath[0].'themes/'.$splitedUrl[1];
+
+		if( file_exists( $newRelPath )) {
+			$this->_setPredictedPath( $newRelPath );
+		}
+	}
+	protected function _predictPlugins() {
+		$imgPluginDirSplitted = explode('wp-content/plugins', $this->_getImgUrl() );
+		$imgAfterPluginDir = $imgPluginDirSplited[1];
+
+		$pluginDir = WP_PLUGIN_DIR;
+		$newRelPath = $pluginDir . $imgAfterPluginDir;
+
+		if( file_exists( $newRelPath ) ) {
+			$this->_setPredictedPath( $newRelPath );
+		}
+
 	}
 
-	private function _predictWPThemesPath() {
 
+	private function _getPredictedPath() {
+		return $this->_predictedPath;
 	}
 
 	private function _setPredictedPath( $predictedPath ) {
 		$this->_predictedPath = $predictedPath;
-	}
-
-	private function _getPredictedPath() {
-		return $this->_predictedPath;
 	}
 
 	private function _setImgUrl( $imgUrl ) {
@@ -1321,8 +1342,7 @@ class fImgPathPredictor {
 	private function _getImgUrl() {
 		return $this->_imgUrl;
 	}
- */
-
+}
 
 class fImgPathPredictor_Single extends fAImgPathPredictor implements fIImgPathPredictor {
 	private $_imgUrl = null;
