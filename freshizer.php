@@ -1,11 +1,11 @@
 <?php
 /*******************************************************************************
- * FRESHIZER -> WP Image Resizer Script
+ * FRESHIZER -> WordPress Image Resizer Script
  * =============================================================================
  * 
  * @license GNU version 2
- * @author freshace
- * @version 1.5
+ * @author freshface
+ * @version 2.0
  * @link http://github.com/boobslover/freshizer
 /*******************************************************************************
  * SETTINGS, PLEASE CHANGE ONLE THESE 3 CONSTANTS
@@ -15,30 +15,27 @@
 // please notice, that the time is in SECONDS. There are not allowed math
 // operations in the definition. So instead of writing:
 // = 60(sec) * 60(min) * 24(hr) * 7(days); you have to write:
-// = 604800; // seconds in 7 days 
-
+// = 604800; // seconds in 7 days
 
 // CACHE TIME
 // ==========
 // When the new (cached) file is older than this time, script automatically
 // checks, if the old file has been changed. If not, then ve serve cached file
 // again. If yes, cached file is deleted and resized again.
-CONST CACHE_TIME = 604800;//604800; // (60 * 60 * 24 * 7); // 7 days
+define('CACHE_TIME', 604800);
 
 // CACHE DELETE FILES AFTER
 // ========================
 // Hard delete files ( not only compare if the original file has been changed,
 // but hardly delete from caching folder ), every X seconds. Please fill a large
 // number, because cached files runs much more speedely
-CONST CACHE_DELETE_FILES_AFTER = 10000000;
+define('CACHE_DELETE_FILES_AFTER',10000000);
 
 // CACHE DELETE FILES - check every X hits
 // =======================================
 // How often do we check if there are files which should be hard deleted ?
 // Optimal is approx 400 - 500 hits
-CONST CACHE_DELETE_FILES_check_every_x_hits = 150;
-
-
+define('CACHE_DELETE_FILES_check_every_x_hits',150);
 
 class blFile {
 	CONST POINTER_END = 'pend';
@@ -63,7 +60,12 @@ class blFile {
 		else 
 			return null;
 	}
-
+	public function read( $size ) {
+		if( $this->getFileSize() > 0 )
+			return fread( $this->getHandle(), $size );
+		else
+			return null;
+	}
 	public function readAllAndClose() {
 		$fileContent = $this->readAll();
 		$this->closeFile();
@@ -233,13 +235,13 @@ class blFileSystem {
 	
 		switch( $ext ) {
 			case 'jpg':
-				$return = imagejpeg($image, $path );
+				$return = imagejpeg($image, $path, 90 );
 				break;
 			case 'jpeg':
-				$return = imagejpeg($image, $path );
+				$return = imagejpeg($image, $path, 90 );
 				break;
 			case 'png':
-				$return = imagepng( $image, $path );
+				$return = imagepng( $image, $path, 0 );
 				break;
 					
 			case 'gif':
@@ -283,11 +285,9 @@ class blFileSystem {
 	
 }
 
-
 interface blIConnection {
 	public function getContent( $url );
 }
-
 
 class blConnectionAdapteur implements blIConnection {
 	/**
@@ -302,6 +302,7 @@ class blConnectionAdapteur implements blIConnection {
 	public function getContent( $url ) {
 		return $this->_getConnectionMethod()->getContent($url);
 	}
+
 /*----------------------------------------------------------------------------*/
 /* PRIVATE FUNCTIONS
 /*----------------------------------------------------------------------------*/	
@@ -373,8 +374,12 @@ class blDownloader {
 	
 	public function getContent( $url ) {
 		return $this->_getConnectionMethod()->getContent($url);
+               
 	}
-	
+	/**
+         * 
+         * @param blIConnection $connectionMethod
+         */
 	private function _setConnectionMethod( blIConnection $connectionMethod ) {
 		$this->_connectionMethod = $connectionMethod;
 	}
@@ -573,6 +578,7 @@ class blImgCache {
 				if( ( $fileData->timestamp  + CACHE_DELETE_FILES_AFTER ) <= time() ) {
 					$unsetArray[] = $url;
 					unlink( $fileData->pathNew);
+					$this->_deleteRetinaFile( $fileData->pathNew );
 				}
 			}
 		}
@@ -587,6 +593,7 @@ class blImgCache {
 				if( ( $fileData->timestamp  + CACHE_DELETE_FILES_AFTER ) <= time() ) {
 					$unsetArray[] = $url;
 					unlink( $fileData->pathNew);
+					$this->_deleteRetinaFile( $fileData->pathNew );
 				}
 			}
 		}
@@ -594,6 +601,15 @@ class blImgCache {
 			unset ($this->_getCacheFileUnparsed()->remoteData[ $oneUrl ] );
 		}
 		$this->_getCacheFileUnparsed()->hitsAfterLastDelete = 0;
+	}
+	
+	public function _deleteRetinaFile( $pathOld ) {
+		$fileNameOld = basename($pathOld);
+		$fileNameNew = str_replace('.','@2x', $fileNameOld);
+		$pathNew = str_replace( $fileNameOld, $fileNameNew, $pathOld );
+		if( file_exists( $pathNew ) ) {
+			unlink( $pathNew );
+		}
 	}
 	
 	
@@ -982,6 +998,10 @@ class fImgDeliverer {
 		
 		if( $path != null ) {
 			$imgData->old->path = $path;
+			if ($this->_doesntHasAlphaLayer($path) && false ) {
+				$imgData->new->filename = $this->_getImgNamer()->renameToJpg( $imgData->new->filename );
+				$imgData->new->url = $this->_getImgNamer()->renameToJpg( $imgData->new->url );
+			}
 			$imgData->new->path = $this->_getUploadDirPath( $imgData->new->filename );
 			$imgData->ready = false;
 			
@@ -991,6 +1011,26 @@ class fImgDeliverer {
 		}
 	}	
 	
+	private function _doesntHasAlphaLayer( $path ) {
+		if( file_exists( $path )) {
+			$pathInfo = pathInfo($path);
+			
+			if( $pathInfo['extension'] != 'png') {
+				return false;
+			}
+			
+			$firstChars = $this->_getFileSystem()->openFile($path)->read(26);//->pointerTo(25)->read(1);
+			//var_dump($firstChars);
+			$char = $firstChars[25];
+			$pngType = (ord($char));
+		//	var_dump($pngType);
+		}
+		if( $pngType == 6 ) {
+			return false;
+		} else {
+			return true;
+		}
+	}
 	
 	private function _deliveryFromRemote( fImgData $imgData ) {
 
@@ -1143,7 +1183,14 @@ class fImgNamer {
 		
 		return $newUrl;
 	}
-	
+	public function renameToJpg( $path ) {
+		$pathInfo = ( pathinfo($path));
+		//var_dump( $pathInfo['dirname'] == '.');
+		( $pathInfo['dirname'] == '.' ) ? $dirname = '' : $dirname = $pathInfo['dirname'] .'/';
+		$toReturn =$dirname . $pathInfo['filename'] . '.jpg';
+		//var_dump($toReturn);
+		return $toReturn;
+	}
 	public function getNewImageUrl( $oldUrl, $width, $height = false, $crop = false, $remote = false ) {
 		/**
 		 * http://defaulturl(freshizer)/[remote]/$oldUrlHash_imgFilename-width[-height][-c(rop)].ext
@@ -1219,12 +1266,12 @@ interface fIImgPathPredictor {
 	private function _predictPlugins();*/
 }
 
-abstract class fAImgPathPredictor implements fIImgPathPredictor { 
-	abstract public function predictPath( $url );
+class fAImgPathPredictor implements fIImgPathPredictor { 
+	public function predictPath( $url ) {}
 	
-	abstract protected function _predictUploads();
-	abstract protected function _predictThemes();
-	abstract protected function _predictPlugins();
+	protected function _predictUploads() {}
+	protected function _predictThemes() {}
+	protected function _predictPlugins() {}
 }
 
 
@@ -1306,7 +1353,7 @@ class fImgPathPredictor_Multisite extends fAImgPathPredictor implements fIImgPat
 	}
 	protected function _predictThemes() {
 		$splitedUrl = explode('themes/', $this->_getImgUrl() ); //explode() $this->_getImgUrl();
-		$splitedPath = explode('themes/', TEMPLATEPATH);
+		$splitedPath = explode('themes/', get_template_directory() );
 		$newRelPath = $splitedPath[0].'themes/'.$splitedUrl[1];
 
 		if( file_exists( $newRelPath )) {
@@ -1323,6 +1370,8 @@ class fImgPathPredictor_Multisite extends fAImgPathPredictor implements fIImgPat
 		if( file_exists( $newRelPath ) ) {
 			$this->_setPredictedPath( $newRelPath );
 		}
+                
+               
 
 	}
 
@@ -1383,7 +1432,7 @@ class fImgPathPredictor_Single extends fAImgPathPredictor implements fIImgPathPr
 		$imgThemeDirSplited = explode('wp-content/themes', $this->_getImgUrl() );
 		$imgAfterThemeDir = $imgThemeDirSplited[1];
 		
-		$currentThemeDirSplited = explode( 'wp-content/themes', TEMPLATEPATH);
+		$currentThemeDirSplited = explode( 'wp-content/themes', get_template_directory());
 		$currentThemeFolder = $currentThemeDirSplited[0];
 		
 		$newRelPath = $currentThemeFolder . 'wp-content/themes' . $imgAfterThemeDir;
@@ -1437,11 +1486,14 @@ class fImgResizer {
 	 */
 	private $_imgResizerCalculator = null;
 	
+	private $_imgHasAlfaChannel = null;
+	
 	public function __construct( blFileSystem $fileSystem ) {
 		$this->_setFileSystem($fileSystem);
 	}
 	
 	public function resize( fImgData $imgData ) {// stdClass $pathInfo, stdClass $imgInfo ) {
+		//var_dump($imgData);
 		$imageOld = $this->_openImage( $imgData->old->path );
 		$orig = $this->_getImgDimensions( $imgData->old->path );
 		
@@ -1453,7 +1505,7 @@ class fImgResizer {
 																					$imgData->new->crop );
 		
 		$imageNew = $this->_createImage( $newDimensions['dst']['w'],$newDimensions['dst']['h']);
-		
+		$imageNewRetina = $this->_createImage( $newDimensions['dst']['w'] * 2,$newDimensions['dst']['h'] * 2);
 		
 		imagecopyresampled($imageNew, $imageOld, $newDimensions['dst']['x'],
 												 $newDimensions['dst']['y'],
@@ -1464,16 +1516,42 @@ class fImgResizer {
 												 $newDimensions['src']['w'],
 												 $newDimensions['src']['h']);
 		
+		imagecopyresampled($imageNewRetina, $imageOld, $newDimensions['dst']['x'],
+			$newDimensions['dst']['y'],
+			$newDimensions['src']['x'],
+			$newDimensions['src']['y'],
+			$newDimensions['dst']['w']*2,
+			$newDimensions['dst']['h']*2,
+			$newDimensions['src']['w'],
+			$newDimensions['src']['h']);
+				
+		if(function_exists('imageantialias') ) {
+        	imageantialias( $imageNew, true );
+        	imageantialias( $imageNewRetina, true );
+        }
+		$pathInfo = pathinfo($imgData->old->path);
+		
+        if ( $pathInfo['extension'] == 'png' && function_exists('imageistruecolor') && !imageistruecolor( $imageOld ) ) {
+                imagetruecolortopalette( $imageNew, false, imagecolorstotal( $imageOld ) );
+        }
 		$this->_getFileSystem()->saveImage( $imageNew, $imgData->new->path );
+		$this->_getFileSystem()->saveImage( $imageNewRetina, str_replace('.','@2x.',$imgData->new->path ) );
+		
 		
 		imagedestroy($imageOld);
 		imagedestroy($imageNew);
-
+		imagedestroy($imageNewRetina);
+		$this->_imgHasAlfaChannel = null;
+		$dimToReturn = array();
+		
 	}
 	
 	private function _openImage( $path ) {
 		$imageString = $this->_getFileSystem()->openFile( $path )->readAllAndClose();
-
+		$pathInfo = pathinfo($path);
+		if( $pathInfo['extension'] == 'png' && ord($imageString[25]) == 6 ) 
+			$this->_imgHasAlfaChannel = true;
+		//return (ord(@file_get_contents($fn, NULL, NULL, 25, 1)) == 6);
 		@ini_set( 'memory_limit', '256M' );
 		$image = imagecreatefromstring( $imageString );
 		return $image;
@@ -1489,7 +1567,7 @@ class fImgResizer {
 	}
 	private function _createImage ($width, $height) {
 		$img = imagecreatetruecolor($width, $height);
-		if ( is_resource($img) && function_exists('imagealphablending') && function_exists('imagesavealpha') ) {
+		if ( is_resource($img) && $this->_imgHasAlfaChannel && function_exists('imagealphablending') && function_exists('imagesavealpha') ) {
 			imagealphablending($img, false);
 			imagesavealpha($img, true);
 		}
@@ -1522,9 +1600,9 @@ class fImgResizer {
 
 class fImgResizerCalculator {
 	public function calculateNewDimensions($orig_w, $orig_h, $dest_w, $dest_h, $crop = false) {
-	
+		
 		if ( $crop ) {
-	
+			
 			// crop the largest possible portion of the original image that we can size to $dest_w x $dest_h
 			$aspect_ratio = $orig_w / $orig_h;
 			$new_w =$dest_w;// min($dest_w, $orig_w);
@@ -1537,7 +1615,7 @@ class fImgResizerCalculator {
 			if ( !$new_h ) {
 				$new_h = intval($new_w / $aspect_ratio);
 			}
-	
+			
 			$size_ratio = max($new_w / $orig_w, $new_h / $orig_h);
 	
 			$crop_w = round($new_w / $size_ratio);
@@ -1547,6 +1625,7 @@ class fImgResizerCalculator {
 			$s_y = floor( ($orig_h - $crop_h) / 2 );
 		} else {
 			// don't crop, just resize using $dest_w x $dest_h as a maximum bounding box
+			
 			$crop_w = $orig_w;
 			$crop_h = $orig_h;
 	
@@ -1566,7 +1645,7 @@ class fImgResizerCalculator {
 		$to_return['dst']['y'] = 0;
 		$to_return['dst']['w'] = (int)$new_w;
 		$to_return['dst']['h'] = (int)$new_h;
-		 
+	
 		return $to_return;
 	}
 	
@@ -1574,9 +1653,10 @@ class fImgResizerCalculator {
 	 * This function has been take over from wordpress core. It calculate the best proportion to uncropped image
 	 */
 	public function constrainNewDimensions( $current_width, $current_height, $max_width=0, $max_height=0 ) {
-	
+		
 		if ( !$max_width and !$max_height )
 			return array( $current_width, $current_height );
+		
 	
 		$width_ratio = $height_ratio = 1.0;
 		$did_width = $did_height = false;
@@ -1596,17 +1676,21 @@ class fImgResizerCalculator {
 		// Calculate the larger/smaller ratios
 		$smaller_ratio = min( $width_ratio, $height_ratio );
 		$larger_ratio  = max( $width_ratio, $height_ratio );
-	
+		
 		if ( intval( $current_width * $larger_ratio ) > $max_width || intval( $current_height * $larger_ratio ) > $max_height )
 			// The larger ratio is too big. It would result in an overflow.
 			$ratio = $smaller_ratio;
 		else
 			// The larger ratio fits, and is likely to be a more "snug" fit.
 			$ratio = $larger_ratio;
-	
+		//echo $current_width;
+		if( $max_width > $current_width && $max_height == 0 ) {
+			$ratio = $larger_ratio;	
+		}
+		
 		$w = intval( $current_width  * $ratio );
 		$h = intval( $current_height * $ratio );
-	
+		
 		// Sometimes, due to rounding, we'll end up with a result like this: 465x700 in a 177x177 box is 117x176... a pixel short
 		// We also have issues with recursive calls resulting in an ever-changing result. Constraining to the result of a constraint should yield the original result.
 		// Thus we look for dimensions that are one pixel shy of the max value and bump them up
@@ -1680,24 +1764,34 @@ class fImg {
 	}
 
 	
-	public static function ResizeC( $url, $width, $height = false, $crop = false ) {
+	public static function ResizeC( $url, $width, $height = false, $crop = false, $returnImgSize = false ) {
 		$width = (int)$width;
 		$height = (int)$height;
 		
-		return self::getInstance()->_resize($url, $width, $height, $crop);
+		return self::getInstance()->_resize($url, $width, $height, $crop, $returnImgSize);
 	}
 	
 
-	public static function resize( $url, $width, $height = false, $crop = false ) {
+	public static function resize( $url, $width, $height = false, $crop = false, $returnImgSize = false ) {
 		$width = (int)$width;
 		$height = (int)$height;
 		
-		return self::getInstance()->_resize($url, $width, $height, $crop);
+		return self::getInstance()->_resize($url, $width, $height, $crop, $returnImgSize = false);
 	}	
 	
+	public static function getImgSize( $url ) {
+		return self::getInstance()->_getImgSize( $url );
+	}
 	
-	private function _resize( $url, $width, $height = false, $crop = false ) {
-
+	private function _getImgSize( $url ) {
+		$imgData = $this->_getImgData($url, 0, false, false);
+		$imgData = $this->_getImgDeliverer()->deliveryImage($imgData);
+		return $imgData;
+	}
+	
+	private function _resize( $url, $width, $height = false, $crop = false, $returnImgSize = false ) {
+		if( empty($url) ) return null;
+		
 		$imgData = $this->_getImgData($url, $width, $height, $crop);
 		$imgData = $this->_getImgDeliverer()->deliveryImage( $imgData );
 		
@@ -1712,10 +1806,20 @@ class fImg {
 			$this->_getImgCache()
 					->addCachedFile( $imgData->new->url, $imgData->old->url, $imgData->new->path, $imgData->old->path, $imgData->remote);
 		}
+		if( $returnImgSize ) {
+			$size = getimagesize($imgData->new->path);
+			
+			$toReturn = array();
+			$toReturn['width'] = $size[0];
+			$toReturn['height'] = $size[1];
+			$toReturn['url'] = $imgData->new->url;
+			
+			return $toReturn;
+		} else {
+			return $imgData->new->url;
+		}
 		
-		return $imgData->new->url;
 	}	
-	
 /*----------------------------------------------------------------------------*/
 /* PRIVATE FUNCTIONS
 /*----------------------------------------------------------------------------*/
@@ -1830,6 +1934,3 @@ class fImg {
 		
 	}
 }
-
-
-
