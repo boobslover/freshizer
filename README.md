@@ -11,4 +11,6 @@ include 'freshizer.php';
 The last two (height and fixed) parameters are optional. This script goes with automated caching, so you will be not overloading your server. Also this script does not even connect to your database, yay :)
 All images are stored in:
 
-```/wp-content/uploads/freshizer/```
+```
+/wp-content/uploads/freshizer/
+```
