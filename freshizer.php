@@ -5,10 +5,10 @@
  * 
  * @license GNU version 2
  * @author freshface
- * @version 2.0
+ * @version 2.1
  * @link http://github.com/boobslover/freshizer
 /*******************************************************************************
- * SETTINGS, PLEASE CHANGE ONLE THESE 3 CONSTANTS
+ * SETTINGS, PLEASE CHANGE ONLY THESE 3 CONSTANTS
  ******************************************************************************/
 // NOTE
 // ====
@@ -29,13 +29,13 @@ define('CACHE_TIME', 604800);
 // Hard delete files ( not only compare if the original file has been changed,
 // but hardly delete from caching folder ), every X seconds. Please fill a large
 // number, because cached files runs much more speedely
-define('CACHE_DELETE_FILES_AFTER',10000000);
+define('CACHE_DELETE_FILES_AFTER', 10000000);
 
 // CACHE DELETE FILES - check every X hits
 // =======================================
 // How often do we check if there are files which should be hard deleted ?
 // Optimal is approx 400 - 500 hits
-define('CACHE_DELETE_FILES_check_every_x_hits',150);
+define('CACHE_DELETE_FILES_check_every_x_hits', 150);
 
 class blFile {
 	CONST POINTER_END = 'pend';
@@ -604,12 +604,11 @@ class blImgCache {
 	}
 	
 	public function _deleteRetinaFile( $pathOld ) {
-		$fileNameOld = basename($pathOld);
-		$fileNameNew = str_replace('.','@2x', $fileNameOld);
-		$pathNew = str_replace( $fileNameOld, $fileNameNew, $pathOld );
-		if( file_exists( $pathNew ) ) {
-			unlink( $pathNew );
-		}
+		$pathInfo = pathinfo($pathOld);
+        $retinaFile = $pathInfo['dirname'] . '/' . $pathInfo['filename'] . '@2x' . '.' . $pathInfo['extension'];
+        if (file_exists($retinaFile)) {
+            unlink($retinaFile);
+        }
 	}
 	
 	
@@ -1535,7 +1534,7 @@ class fImgResizer {
                 imagetruecolortopalette( $imageNew, false, imagecolorstotal( $imageOld ) );
         }
 		$this->_getFileSystem()->saveImage( $imageNew, $imgData->new->path );
-		$this->_getFileSystem()->saveImage( $imageNewRetina, str_replace('.','@2x.',$imgData->new->path ) );
+        $this->_getFileSystem()->saveImage($imageNewRetina, $this->_getRetinaPath($imgData->new->path));
 		
 		
 		imagedestroy($imageOld);
@@ -1577,6 +1576,12 @@ class fImgResizer {
 /*----------------------------------------------------------------------------*/
 /* SETTERS AND GETTERS
 /*----------------------------------------------------------------------------*/
+
+    private function _getRetinaPath($path) {
+        $pathInfo = pathinfo($path);
+        return $pathInfo['dirname'] . '/' . $pathInfo['filename'] . '@2x' . '.' . $pathInfo['extension'];
+    }
+
 	private function _getImgResizerCalculator() {
 		if( $this->_imgResizerCalculator == null ) { 
 			$this->_imgResizerCalculator = new fImgResizerCalculator();
