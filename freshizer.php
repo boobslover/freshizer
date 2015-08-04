@@ -28,7 +28,7 @@ define('CACHE_TIME', 604800);
 // ========================
 // Hard delete files ( not only compare if the original file has been changed,
 // but hardly delete from caching folder ), every X seconds. Please fill a large
-// number, because cached files runs much more speedely
+// number, because cached files runs much more speedy
 define('CACHE_DELETE_FILES_AFTER', 10000000);
 
 // CACHE DELETE FILES - check every X hits
