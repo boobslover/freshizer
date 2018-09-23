@@ -37,6 +37,11 @@ define('CACHE_DELETE_FILES_AFTER', 10000000);
 // Optimal is approx 400 - 500 hits
 define('CACHE_DELETE_FILES_check_every_x_hits', 150);
 
+
+// Disable create Retina IMG, in the case of you no require create retina image change to true.
+
+define('DISABLE_RETINA_IMG',false);
+
 class blFile {
 	CONST POINTER_END = 'pend';
 	
@@ -1504,7 +1509,10 @@ class fImgResizer {
 																					$imgData->new->crop );
 		
 		$imageNew = $this->_createImage( $newDimensions['dst']['w'],$newDimensions['dst']['h']);
+
+		if(DISABLE_RETINA_IMG == false){
 		$imageNewRetina = $this->_createImage( $newDimensions['dst']['w'] * 2,$newDimensions['dst']['h'] * 2);
+		}
 		
 		imagecopyresampled($imageNew, $imageOld, $newDimensions['dst']['x'],
 												 $newDimensions['dst']['y'],
@@ -1514,19 +1522,21 @@ class fImgResizer {
 												 $newDimensions['dst']['h'],
 												 $newDimensions['src']['w'],
 												 $newDimensions['src']['h']);
-		
-		imagecopyresampled($imageNewRetina, $imageOld, $newDimensions['dst']['x'],
-			$newDimensions['dst']['y'],
-			$newDimensions['src']['x'],
-			$newDimensions['src']['y'],
-			$newDimensions['dst']['w']*2,
-			$newDimensions['dst']['h']*2,
-			$newDimensions['src']['w'],
-			$newDimensions['src']['h']);
-				
+		if(DISABLE_RETINA_IMG == false){
+			imagecopyresampled($imageNewRetina, $imageOld, $newDimensions['dst']['x'],
+				$newDimensions['dst']['y'],
+				$newDimensions['src']['x'],
+				$newDimensions['src']['y'],
+				$newDimensions['dst']['w']*2,
+				$newDimensions['dst']['h']*2,
+				$newDimensions['src']['w'],
+				$newDimensions['src']['h']);
+		}		
 		if(function_exists('imageantialias') ) {
-        	imageantialias( $imageNew, true );
-        	imageantialias( $imageNewRetina, true );
+			imageantialias( $imageNew, true );
+			if(DISABLE_RETINA_IMG == false){
+					imageantialias( $imageNewRetina, true );
+			}
         }
 		$pathInfo = pathinfo($imgData->old->path);
 		
@@ -1534,12 +1544,15 @@ class fImgResizer {
                 imagetruecolortopalette( $imageNew, false, imagecolorstotal( $imageOld ) );
         }
 		$this->_getFileSystem()->saveImage( $imageNew, $imgData->new->path );
-        $this->_getFileSystem()->saveImage($imageNewRetina, $this->_getRetinaPath($imgData->new->path));
-		
+		if(DISABLE_RETINA_IMG == false){
+        	$this->_getFileSystem()->saveImage($imageNewRetina, $this->_getRetinaPath($imgData->new->path));
+		}		
 		
 		imagedestroy($imageOld);
 		imagedestroy($imageNew);
-		imagedestroy($imageNewRetina);
+		if(DISABLE_RETINA_IMG == false){
+			imagedestroy($imageNewRetina);
+		}
 		$this->_imgHasAlfaChannel = null;
 		$dimToReturn = array();
 		
